@@ -1,6 +1,6 @@
 # src/experiments.py
 import argparse, csv, os
-from .algorithms import solve_nqueens
+from src.algorithms import solve_nqueens
 
 def run_suite(out_csv, Ns, seeds, timeout):
     os.makedirs(os.path.dirname(out_csv), exist_ok=True)

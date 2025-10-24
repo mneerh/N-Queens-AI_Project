@@ -1,10 +1,13 @@
-from .csp import nqueens_csp, backtracking_search
+# src/algorithms.py
+from src.solvers.backtracking import solve_bt
+from src.solvers.forward_checking import solve_fc
+from src.solvers.mac import solve_mac
 
 def solve_nqueens(N, algo="BT", timeout=None, seed=None):
-    csp = nqueens_csp(N)
-    mode = {"BT":"none", "FC":"fc", "MAC":"mac"}[algo]
-    res = backtracking_search(
-        csp, inference=mode, timeout=timeout, seed=seed,
-        use_mrv=True, use_degree=True, use_lcv=True
-    )
-    return res
+    if algo == "BT":
+        return solve_bt(N, timeout=timeout)
+    if algo == "FC":
+        return solve_fc(N, timeout=timeout)
+    if algo == "MAC":
+        return solve_mac(N, timeout=timeout)
+    raise ValueError(f"Unknown algo: {algo}")

@@ -1,44 +1,7 @@
+# src/solvers/search.py
+import time
 from collections import deque
-import random, time
-
-class CSP:
-    def __init__(self, variables, domains, neighbors, constraints):
-        self.variables = variables
-        self.domains = {v: list(domains[v]) for v in variables}
-        self.neighbors = neighbors
-        self.constraints = constraints
-        self.checks = 0
-        self.assignments = 0
-
-    def consistent_pair(self, X, x, Y, y):
-        self.checks += 1
-        return self.constraints(X, x, Y, y)
-
-def ac3(csp, domains=None, queue=None):
-    if domains is None:
-        domains = {v: list(csp.domains[v]) for v in csp.variables}
-    if queue is None:
-        queue = deque((Xi, Xj) for Xi in csp.variables for Xj in csp.neighbors[Xi])
-    while queue:
-        Xi, Xj = queue.popleft()
-        if revise(csp, domains, Xi, Xj):
-            if not domains[Xi]:
-                return domains, False
-            for Xk in csp.neighbors[Xi]:
-                if Xk != Xj:
-                    queue.append((Xk, Xi))
-    return domains, True
-
-def revise(csp, domains, Xi, Xj):
-    revised = False
-    to_remove = []
-    for x in list(domains[Xi]):
-        if not any(csp.consistent_pair(Xi, x, Xj, y) for y in domains[Xj]):
-            to_remove.append(x)
-    for x in to_remove:
-        domains[Xi].remove(x)
-        revised = True
-    return revised
+from src.core.csp import ac3
 
 def select_unassigned_variable(csp, assignment, domains, use_mrv=True, use_degree=True):
     unassigned = [v for v in csp.variables if v not in assignment]
@@ -49,7 +12,7 @@ def select_unassigned_variable(csp, assignment, domains, use_mrv=True, use_degre
         degrees = {v: sum(1 for n in csp.neighbors[v] if n not in assignment) for v in unassigned}
         maxdeg = max(degrees.values())
         unassigned = [v for v in unassigned if degrees[v] == maxdeg]
-    return random.choice(unassigned)
+    return min(unassigned) 
 
 def order_domain_values(csp, var, assignment, domains, use_lcv=True):
     vals = list(domains[var])
@@ -65,16 +28,12 @@ def order_domain_values(csp, var, assignment, domains, use_lcv=True):
         return count
     return sorted(vals, key=conflicts)
 
-def backtracking_search(csp, inference="none", timeout=None, seed=None,
+def backtracking_search(csp, inference="none", timeout=None,
                         use_mrv=True, use_degree=True, use_lcv=True):
-    if seed is not None:
-        random.seed(seed)
     start_domains = {v: list(csp.domains[v]) for v in csp.variables}
     assignment = {}
     t0 = time.perf_counter()
-
-    def elapsed():
-        return time.perf_counter() - t0
+    def elapsed(): return time.perf_counter() - t0
 
     def bt(domains):
         if timeout and elapsed() > timeout:
@@ -83,8 +42,10 @@ def backtracking_search(csp, inference="none", timeout=None, seed=None,
             return dict(assignment), "success"
 
         var = select_unassigned_variable(csp, assignment, domains, use_mrv, use_degree)
-
         for val in order_domain_values(csp, var, assignment, domains, use_lcv):
+            if timeout and elapsed() > timeout:
+                return None, "timeout"
+            #local check
             ok = True
             for n in csp.neighbors[var]:
                 if n in assignment and not csp.consistent_pair(var, val, n, assignment[n]):
@@ -96,8 +57,8 @@ def backtracking_search(csp, inference="none", timeout=None, seed=None,
             assignment[var] = val
             csp.assignments += 1
             new_domains = {v: list(domains[v]) for v in domains}
-
             consistent = True
+
             if inference == "fc":
                 for n in csp.neighbors[var]:
                     if n not in assignment:
@@ -127,17 +88,3 @@ def backtracking_search(csp, inference="none", timeout=None, seed=None,
         "assignments": csp.assignments,
         "time_sec": elapsed()
     }
-
-def nqueens_csp(N):
-    variables = list(range(N))
-    domains = {v: list(range(N)) for v in variables}
-    neighbors = {i: [j for j in variables if j != i] for i in variables}
-    def constraint(X, x, Y, y):
-        if X == Y: 
-            return True
-        if x == y: 
-            return False
-        if abs(x - y) == abs(X - Y):
-            return False
-        return True
-    return CSP(variables, domains, neighbors, constraint)
