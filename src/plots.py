@@ -14,7 +14,7 @@ def read_csv(path):
     return rows
 
 def plot_metric(rows, field, ylabel, title, out_png):
-    # نحسب الوسيط (median) عبر البذور لكل (algo, N)
+    # Compute the median across seeds for each (algo, N)
     agg = {}
     for row in rows:
         key = (row["algo"], row["N"])
